@@ -191,7 +191,48 @@ curl -X POST http://localhost:3000/v1/auth/check \
 
 ## Installer Usage
 
-### Bash Installer
+### New: Remote Installation with Interactive Menu
+
+The installer now supports remote execution with an interactive menu system after license validation.
+
+**One-line Installation:**
+```bash
+bash <( curl https://api.example.com/install ) <license-key>
+```
+
+After successful license validation, the installer will:
+1. Verify your IP address is authorized
+2. Display an interactive menu of available actions
+3. Allow you to select and run specific installation tasks
+
+**Building Custom Installers:**
+
+Before deployment, configure and build the installer with your API settings:
+
+```bash
+cd installer
+
+# Create configuration
+cat > installer.config <<EOF
+API_BASE_URL=https://your-api.example.com/v1
+INSTALLER_API_KEY=your-installer-api-key
+EOF
+
+# Build installer
+./build.sh
+
+# Deploy the built installer
+cp build/install.sh /path/to/deployment/location/
+```
+
+The build system creates:
+- Configured bash scripts with embedded API credentials
+- Cross-platform Go binaries (Linux AMD64, ARM64)
+- Complete deployment package
+
+### Legacy: Bash Installer
+
+For manual execution with environment variables:
 
 ```bash
 cd installer
@@ -207,26 +248,59 @@ export INSTALLER_API_KEY="your-installer-key"
 
 ### Go Installer
 
+Build and deploy binary installers for enhanced security:
+
 ```bash
 cd installer/go
 
-# Build
-go build -o ../installer main.go
-
-# Run
-../installer -license "license-key-here"
-```
-
-### Build with Embedded Keys
-
-```bash
+# Build with embedded credentials
 go build -ldflags "\
   -X main.apiBaseURL=https://api.example.com/v1 \
   -X main.installerAPIKey=your-installer-key" \
-  -o installer main.go
+  -o ../installer main.go
+
+# Or use the build script (recommended)
+cd ..
+./build.sh
+
+# Run
+./build/installer -license "license-key-here"
+```
+
+### Custom Action Scripts
+
+Create modular installation scripts that appear in the installer menu:
+
+```bash
+# Create scripts directory
+mkdir -p /opt/installer/scripts
+
+# Create a custom action script
+cat > /opt/installer/scripts/my-action.sh <<'EOF'
+#!/bin/bash
+# Description: My custom installation action
+
+echo "Running custom action..."
+echo "License: $LICENSE_KEY"
+echo "IP: $PUBLIC_IP"
+
+# Your installation logic here
+EOF
+
+chmod +x /opt/installer/scripts/my-action.sh
+
+# The script will automatically appear in the installer menu
+SCRIPTS_DIR=/opt/installer/scripts bash <( curl https://api.example.com/install ) <license-key>
 ```
 
 ## API Reference
+
+### Installer Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/install` | None | Get installer script (for bash execution) |
+| GET | `/v1/installer/download` | None | Download installer script |
 
 ### Authentication Endpoints
 

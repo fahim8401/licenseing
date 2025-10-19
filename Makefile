@@ -44,3 +44,9 @@ dev-frontend: ## Run frontend in development mode
 
 build-installer: ## Build Go installer
 	cd installer/go && go build -o ../installer main.go
+
+build-installer-all: ## Build all installer variants (bash + Go binaries)
+	cd installer && ./build.sh
+
+test-installer: ## Test installer scripts
+	cd installer && ./test-installer.sh
