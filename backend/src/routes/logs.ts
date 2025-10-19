@@ -21,7 +21,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response) => {
     
     // Build WHERE clause
     const conditions: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | Date)[] = [];
     let paramCount = 1;
     
     if (result) {

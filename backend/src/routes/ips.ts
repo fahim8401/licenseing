@@ -4,6 +4,7 @@ import { isValidIpOrCidr } from '../services/ipmatch';
 import { addIpToMikroTik, removeIpFromMikroTik } from '../services/mikrotik';
 import { AddIPRequest } from '../types';
 import { requireAdmin } from '../middleware/apikey';
+import { isDuplicateKeyError } from '../utils/errors';
 
 const router = Router();
 
@@ -48,11 +49,11 @@ router.post('/:licenseId/ips', requireAdmin, async (req: Request, res: Response)
     }
     
     return res.status(201).json(newIp);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error adding IP:', error);
     
     // Check for duplicate
-    if (error.code === '23505') {
+    if (isDuplicateKeyError(error)) {
       return res.status(409).json({ error: 'IP already added to this license' });
     }
     

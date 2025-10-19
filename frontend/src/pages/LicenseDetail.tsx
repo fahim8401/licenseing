@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getLicense, addIP, removeIP } from '../services/api';
+import { extractAxiosErrorMessage } from '../utils/errors';
 import type { License } from '../types';
 
 export default function LicenseDetail() {
@@ -10,13 +11,7 @@ export default function LicenseDetail() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ ip_cidr: '', note: '' });
 
-  useEffect(() => {
-    if (id) {
-      loadLicense();
-    }
-  }, [id]);
-
-  const loadLicense = async () => {
+  const loadLicense = useCallback(async () => {
     try {
       const res = await getLicense(parseInt(id!));
       setLicense(res.data);
@@ -25,7 +20,13 @@ export default function LicenseDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadLicense();
+    }
+  }, [id, loadLicense]);
 
   const handleAddIP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +35,8 @@ export default function LicenseDetail() {
       setShowForm(false);
       setFormData({ ip_cidr: '', note: '' });
       loadLicense();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add IP');
+    } catch (error) {
+      alert(extractAxiosErrorMessage(error, 'Failed to add IP'));
     }
   };
 
@@ -45,7 +46,7 @@ export default function LicenseDetail() {
       await removeIP(parseInt(id!), ipId);
       loadLicense();
     } catch (error) {
-      alert('Failed to remove IP');
+      alert(extractAxiosErrorMessage(error, 'Failed to remove IP'));
     }
   };
 

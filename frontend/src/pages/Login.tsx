@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { checkAuth } from '../services/api';
+import { extractAxiosErrorMessage } from '../utils/errors';
 
 interface LoginProps {
   onLogin: () => void;
@@ -19,8 +20,8 @@ export default function Login({ onLogin }: LoginProps) {
       await checkAuth(apiKey);
       sessionStorage.setItem('apiKey', apiKey);
       onLogin();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Invalid API key');
+    } catch (err) {
+      setError(extractAxiosErrorMessage(err, 'Invalid API key'));
     } finally {
       setLoading(false);
     }
