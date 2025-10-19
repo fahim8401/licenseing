@@ -1,0 +1,9 @@
+# Installer Configuration
+# Edit these values before building the installer
+
+# API Configuration
+API_BASE_URL=https://api.example.com/v1
+INSTALLER_API_KEY=changeme-installer-key-here
+
+# Optional: Encryption key for additional security
+# ENCRYPTION_KEY=your-encryption-key-here
