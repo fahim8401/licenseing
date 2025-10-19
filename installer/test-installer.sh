@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# Determine the script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALLER_DIR="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 echo "=========================================="
 echo "  Installer System Test"
 echo "=========================================="
@@ -32,7 +37,7 @@ EOF
 echo -e "${GREEN}[3/5]${NC} Testing installer structure..."
 
 # Check if main installer exists
-if [ -f "/home/runner/work/licenseing/licenseing/installer/install.sh" ]; then
+if [ -f "$INSTALLER_DIR/install.sh" ]; then
     echo "  ✓ Main installer script found"
 else
     echo -e "  ${RED}✗ Main installer script not found${NC}"
@@ -40,7 +45,7 @@ else
 fi
 
 # Check if build script exists
-if [ -f "/home/runner/work/licenseing/licenseing/installer/build.sh" ]; then
+if [ -f "$INSTALLER_DIR/build.sh" ]; then
     echo "  ✓ Build script found"
 else
     echo -e "  ${RED}✗ Build script not found${NC}"
@@ -48,7 +53,7 @@ else
 fi
 
 # Check if sample action scripts exist
-SCRIPT_COUNT=$(find /home/runner/work/licenseing/licenseing/installer/scripts -name "*.sh" 2>/dev/null | wc -l)
+SCRIPT_COUNT=$(find "$INSTALLER_DIR/scripts" -name "*.sh" 2>/dev/null | wc -l)
 if [ "$SCRIPT_COUNT" -gt 0 ]; then
     echo "  ✓ Found $SCRIPT_COUNT action scripts"
 else
@@ -56,11 +61,11 @@ else
 fi
 
 echo -e "${GREEN}[4/5]${NC} Testing installer script syntax..."
-bash -n /home/runner/work/licenseing/licenseing/installer/install.sh
+bash -n "$INSTALLER_DIR/install.sh"
 echo "  ✓ Installer script syntax is valid"
 
 echo -e "${GREEN}[5/5]${NC} Testing action script syntax..."
-for script in /home/runner/work/licenseing/licenseing/installer/scripts/*.sh; do
+for script in "$INSTALLER_DIR/scripts"/*.sh; do
     if [ -f "$script" ]; then
         bash -n "$script"
         echo "  ✓ $(basename "$script") syntax is valid"
@@ -77,7 +82,7 @@ echo ""
 echo "The installer system is ready to use."
 echo ""
 echo "To build the installer:"
-echo "  cd /home/runner/work/licenseing/licenseing/installer"
+echo "  cd $INSTALLER_DIR"
 echo "  ./build.sh installer.config"
 echo ""
 echo "To deploy:"

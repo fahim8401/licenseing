@@ -289,7 +289,7 @@ mv build build-staging
 
 ## Support
 
-For issues or questions:
+For any issues or questions:
 - Check the logs: `docker-compose logs -f api`
 - Review backend logs for API errors
 - Test API directly: `curl -X POST https://api.example.com/v1/auth/check ...`
