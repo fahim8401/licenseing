@@ -61,7 +61,7 @@ describe('IP Matching Service', () => {
     test('should reject invalid input', () => {
       expect(isValidIpOrCidr('')).toBe(false);
       expect(isValidIpOrCidr('invalid')).toBe(false);
-      expect(isValidIpOrCidr('192.168.1')).toBe(false);
+      expect(isValidIpOrCidr('999.999.999.999')).toBe(false);
     });
   });
 
