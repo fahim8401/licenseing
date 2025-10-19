@@ -26,11 +26,11 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
     );
     
     return res.status(201).json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating license:', error);
     
     // Check for duplicate key error
-    if (error.code === '23505') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
       return res.status(409).json({ error: 'License key already exists' });
     }
     
@@ -95,7 +95,7 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
     
     // Build update query dynamically
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | boolean | Date | null)[] = [];
     let paramCount = 1;
     
     if (name !== undefined) {

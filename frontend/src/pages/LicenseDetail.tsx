@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getLicense, addIP, removeIP } from '../services/api';
 import type { License } from '../types';
@@ -10,13 +10,7 @@ export default function LicenseDetail() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ ip_cidr: '', note: '' });
 
-  useEffect(() => {
-    if (id) {
-      loadLicense();
-    }
-  }, [id]);
-
-  const loadLicense = async () => {
+  const loadLicense = useCallback(async () => {
     try {
       const res = await getLicense(parseInt(id!));
       setLicense(res.data);
@@ -25,7 +19,13 @@ export default function LicenseDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadLicense();
+    }
+  }, [id, loadLicense]);
 
   const handleAddIP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +34,12 @@ export default function LicenseDetail() {
       setShowForm(false);
       setFormData({ ip_cidr: '', note: '' });
       loadLicense();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add IP');
+    } catch (error) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error && 
+                          error.response && typeof error.response === 'object' && 'data' in error.response &&
+                          error.response.data && typeof error.response.data === 'object' && 'error' in error.response.data
+                          ? String(error.response.data.error) : 'Failed to add IP';
+      alert(errorMessage);
     }
   };
 

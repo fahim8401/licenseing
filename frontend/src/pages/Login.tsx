@@ -19,8 +19,12 @@ export default function Login({ onLogin }: LoginProps) {
       await checkAuth(apiKey);
       sessionStorage.setItem('apiKey', apiKey);
       onLogin();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Invalid API key');
+    } catch (err) {
+      const errorMessage = err && typeof err === 'object' && 'response' in err && 
+                          err.response && typeof err.response === 'object' && 'data' in err.response &&
+                          err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data
+                          ? String(err.response.data.error) : 'Invalid API key';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

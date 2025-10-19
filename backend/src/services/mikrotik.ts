@@ -93,6 +93,9 @@ export async function addIpToMikroTik(ipCidr: string, licenseId: number): Promis
   try {
     api = await getConnection();
     
+    // Ensure address list exists
+    await ensureAddressList(api);
+    
     // Ensure NAT rule exists
     await ensureNatRule(api);
     

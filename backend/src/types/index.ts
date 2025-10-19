@@ -21,7 +21,7 @@ export interface AuthLog {
   request_ip: string | null;
   machine_identifier: string | null;
   result: string;
-  raw_request: any;
+  raw_request: Record<string, unknown>;
   created_at: Date;
 }
 

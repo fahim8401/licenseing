@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getLogs } from '../services/api';
 import type { AuthLog } from '../types';
 
@@ -12,11 +12,7 @@ export default function Logs() {
     license_key: '',
   });
 
-  useEffect(() => {
-    loadLogs();
-  }, [page, filters]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       const res = await getLogs({
         page,
@@ -31,7 +27,11 @@ export default function Logs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, filters]);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters({ ...filters, [key]: value });

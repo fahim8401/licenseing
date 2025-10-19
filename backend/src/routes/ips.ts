@@ -48,11 +48,11 @@ router.post('/:licenseId/ips', requireAdmin, async (req: Request, res: Response)
     }
     
     return res.status(201).json(newIp);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error adding IP:', error);
     
     // Check for duplicate
-    if (error.code === '23505') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
       return res.status(409).json({ error: 'IP already added to this license' });
     }
     

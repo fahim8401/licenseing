@@ -38,8 +38,12 @@ export default function Licenses() {
       setShowForm(false);
       setFormData({ name: '', license_key: '', expires_at: '' });
       loadLicenses();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to create license');
+    } catch (error) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error && 
+                          error.response && typeof error.response === 'object' && 'data' in error.response &&
+                          error.response.data && typeof error.response.data === 'object' && 'error' in error.response.data
+                          ? String(error.response.data.error) : 'Failed to create license';
+      alert(errorMessage);
     }
   };
 
