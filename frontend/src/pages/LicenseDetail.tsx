@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getLicense, addIP, removeIP } from '../services/api';
+import { extractAxiosErrorMessage } from '../utils/errors';
 import type { License } from '../types';
 
 export default function LicenseDetail() {
@@ -35,11 +36,7 @@ export default function LicenseDetail() {
       setFormData({ ip_cidr: '', note: '' });
       loadLicense();
     } catch (error) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error && 
-                          error.response && typeof error.response === 'object' && 'data' in error.response &&
-                          error.response.data && typeof error.response.data === 'object' && 'error' in error.response.data
-                          ? String(error.response.data.error) : 'Failed to add IP';
-      alert(errorMessage);
+      alert(extractAxiosErrorMessage(error, 'Failed to add IP'));
     }
   };
 

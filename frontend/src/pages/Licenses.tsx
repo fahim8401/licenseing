@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getLicenses, createLicense, deleteLicense, updateLicense } from '../services/api';
+import { extractAxiosErrorMessage } from '../utils/errors';
 import type { License } from '../types';
 
 export default function Licenses() {
@@ -39,11 +40,7 @@ export default function Licenses() {
       setFormData({ name: '', license_key: '', expires_at: '' });
       loadLicenses();
     } catch (error) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error && 
-                          error.response && typeof error.response === 'object' && 'data' in error.response &&
-                          error.response.data && typeof error.response.data === 'object' && 'error' in error.response.data
-                          ? String(error.response.data.error) : 'Failed to create license';
-      alert(errorMessage);
+      alert(extractAxiosErrorMessage(error, 'Failed to create license'));
     }
   };
 

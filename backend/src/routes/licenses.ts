@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { query } from '../services/db';
 import { CreateLicenseRequest } from '../types';
 import { requireAdmin } from '../middleware/apikey';
+import { isDuplicateKeyError } from '../utils/errors';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
     console.error('Error creating license:', error);
     
     // Check for duplicate key error
-    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+    if (isDuplicateKeyError(error)) {
       return res.status(409).json({ error: 'License key already exists' });
     }
     
