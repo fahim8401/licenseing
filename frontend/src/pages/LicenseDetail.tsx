@@ -46,7 +46,7 @@ export default function LicenseDetail() {
       await removeIP(parseInt(id!), ipId);
       loadLicense();
     } catch (error) {
-      alert('Failed to remove IP');
+      alert(extractAxiosErrorMessage(error, 'Failed to remove IP'));
     }
   };
 

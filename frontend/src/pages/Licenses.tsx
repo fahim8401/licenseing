@@ -49,7 +49,7 @@ export default function Licenses() {
       await updateLicense(license.id, { active: !license.active });
       loadLicenses();
     } catch (error) {
-      alert('Failed to update license');
+      alert(extractAxiosErrorMessage(error, 'Failed to update license'));
     }
   };
 
@@ -59,7 +59,7 @@ export default function Licenses() {
       await deleteLicense(id);
       loadLicenses();
     } catch (error) {
-      alert('Failed to delete license');
+      alert(extractAxiosErrorMessage(error, 'Failed to delete license'));
     }
   };
 
