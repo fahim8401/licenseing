@@ -44,6 +44,11 @@ installer/go/installer
 # Compiled installer
 installer/*.bin
 installer/installer
+installer/build/
+installer/installer.config
+
+# Installer action scripts (user-customizable, but provide examples)
+# installer/scripts/
 
 # Temporary
 /tmp/

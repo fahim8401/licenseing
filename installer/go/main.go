@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -9,12 +10,15 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	defaultAPIBase = "https://api.example.com/v1"
+	defaultAPIBase    = "https://api.example.com/v1"
+	defaultScriptsDir = "/opt/installer/scripts"
 )
 
 var (
@@ -38,10 +42,12 @@ func main() {
 	var licenseKey string
 	var apiBase string
 	var apiKey string
+	var scriptsDir string
 
 	flag.StringVar(&licenseKey, "license", "", "License key")
 	flag.StringVar(&apiBase, "api", apiBaseURL, "API base URL")
 	flag.StringVar(&apiKey, "key", installerAPIKey, "Installer API key")
+	flag.StringVar(&scriptsDir, "scripts", defaultScriptsDir, "Scripts directory")
 	flag.Parse()
 
 	// Override from environment if set
@@ -53,6 +59,9 @@ func main() {
 	}
 	if env := os.Getenv("LICENSE_KEY"); env != "" && licenseKey == "" {
 		licenseKey = env
+	}
+	if env := os.Getenv("SCRIPTS_DIR"); env != "" {
+		scriptsDir = env
 	}
 
 	// Prompt for license key if not provided
@@ -84,28 +93,46 @@ func main() {
 
 	// Validate license
 	fmt.Println("[INFO] Validating license...")
-	fmt.Printf("[INFO] License Key: %s...\n", licenseKey[:8])
+	fmt.Printf("[INFO] License Key: %s...\n", licenseKey[:min(8, len(licenseKey))])
 	fmt.Printf("[INFO] Public IP: %s\n", publicIP)
-	fmt.Printf("[INFO] Machine ID: %s...\n", machineID[:16])
+	fmt.Printf("[INFO] Machine ID: %s...\n", machineID[:min(16, len(machineID))])
 
 	if err := validateLicense(apiBase, apiKey, licenseKey, publicIP, machineID); err != nil {
 		fmt.Printf("[ERROR] License validation failed: %v\n", err)
+		fmt.Printf("[ERROR] Your IP (%s) is not authorized for this license\n", publicIP)
 		fmt.Println("[ERROR] Installation aborted")
 		os.Exit(1)
 	}
 
 	fmt.Println()
-	fmt.Println("[INFO] License validated successfully. Proceeding with installation...")
+	fmt.Println("[INFO] ✓ License validated successfully!")
+	fmt.Printf("[INFO] ✓ IP address: %s\n", publicIP)
 	fmt.Println()
 
-	// Run the actual installation
-	if err := runInstallation(); err != nil {
-		fmt.Printf("[ERROR] Installation failed: %v\n", err)
-		os.Exit(1)
+	// Set environment variables for scripts
+	os.Setenv("LICENSE_KEY", licenseKey)
+	os.Setenv("PUBLIC_IP", publicIP)
+	os.Setenv("MACHINE_ID", machineID)
+
+	// Check for action scripts
+	if hasActionScripts(scriptsDir) {
+		// Show interactive menu
+		if err := interactiveMenu(scriptsDir); err != nil {
+			fmt.Printf("[ERROR] Menu error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Run default installation
+		fmt.Println("[INFO] Running default installation...")
+		fmt.Println()
+		if err := runInstallation(); err != nil {
+			fmt.Printf("[ERROR] Installation failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println()
+		fmt.Println("[INFO] Installation completed successfully!")
 	}
 
-	fmt.Println()
-	fmt.Println("[INFO] Installation completed successfully!")
 	fmt.Println()
 }
 
@@ -242,4 +269,163 @@ func runEmbeddedScript() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// Helper function for min
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// Check if scripts directory has action scripts
+func hasActionScripts(scriptsDir string) bool {
+	if _, err := os.Stat(scriptsDir); os.IsNotExist(err) {
+		return false
+	}
+
+	files, err := os.ReadDir(scriptsDir)
+	if err != nil {
+		return false
+	}
+
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".sh") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// List available action scripts
+func listActionScripts(scriptsDir string) ([]string, error) {
+	files, err := os.ReadDir(scriptsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var scripts []string
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".sh") {
+			scriptPath := fmt.Sprintf("%s/%s", scriptsDir, file.Name())
+			scripts = append(scripts, scriptPath)
+		}
+	}
+
+	return scripts, nil
+}
+
+// Extract description from script
+func getScriptDescription(scriptPath string) string {
+	file, err := os.Open(scriptPath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "# Description:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "# Description:"))
+		}
+	}
+
+	return ""
+}
+
+// Show interactive menu
+func interactiveMenu(scriptsDir string) error {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		// Get list of scripts
+		scripts, err := listActionScripts(scriptsDir)
+		if err != nil || len(scripts) == 0 {
+			return fmt.Errorf("no action scripts available")
+		}
+
+		// Display menu
+		fmt.Println()
+		fmt.Println("==========================================")
+		fmt.Println("  Available Actions")
+		fmt.Println("==========================================")
+		fmt.Println()
+
+		for i, script := range scripts {
+			name := strings.TrimSuffix(filepath.Base(script), ".sh")
+			desc := getScriptDescription(script)
+			fmt.Printf("%2d) %-30s %s\n", i+1, name, desc)
+		}
+
+		fmt.Println()
+		fmt.Printf("%2d) Exit\n", 0)
+		fmt.Println()
+
+		// Get user selection
+		fmt.Print("Select an action (0-", len(scripts), "): ")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		selection, err := strconv.Atoi(input)
+		if err != nil {
+			fmt.Println("[ERROR] Invalid input. Please enter a number.")
+			continue
+		}
+
+		// Handle exit
+		if selection == 0 {
+			fmt.Println("[INFO] Exiting installer")
+			break
+		}
+
+		// Validate range
+		if selection < 1 || selection > len(scripts) {
+			fmt.Printf("[ERROR] Invalid selection. Please choose between 0 and %d.\n", len(scripts))
+			continue
+		}
+
+		// Execute selected script
+		selectedScript := scripts[selection-1]
+		if err := executeScript(selectedScript); err != nil {
+			fmt.Printf("[ERROR] Script execution failed: %v\n", err)
+		}
+
+		fmt.Println()
+		fmt.Print("Press Enter to continue...")
+		reader.ReadString('\n')
+	}
+
+	return nil
+}
+
+// Execute a script
+func executeScript(scriptPath string) error {
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return fmt.Errorf("script not found: %s", scriptPath)
+	}
+
+	// Make executable
+	os.Chmod(scriptPath, 0755)
+
+	fmt.Printf("[INFO] Executing: %s\n", filepath.Base(scriptPath))
+	fmt.Println()
+
+	cmd := exec.Command("bash", scriptPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+
+	err := cmd.Run()
+
+	fmt.Println()
+	if err != nil {
+		fmt.Printf("[ERROR] Action failed with exit code: %v\n", err)
+		return err
+	}
+
+	fmt.Println("[INFO] ✓ Action completed successfully")
+	return nil
 }

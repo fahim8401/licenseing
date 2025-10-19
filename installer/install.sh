@@ -111,6 +111,168 @@ validate_license() {
     return 1
 }
 
+# Directory containing action scripts
+SCRIPTS_DIR="${SCRIPTS_DIR:-/opt/installer/scripts}"
+
+# List available action scripts
+list_actions() {
+    local scripts_dir="$1"
+    
+    if [ ! -d "$scripts_dir" ]; then
+        log_warn "Scripts directory not found: $scripts_dir"
+        return 1
+    fi
+    
+    local scripts=()
+    while IFS= read -r -d '' script; do
+        scripts+=("$script")
+    done < <(find "$scripts_dir" -maxdepth 1 -type f -name "*.sh" -print0 | sort -z)
+    
+    if [ ${#scripts[@]} -eq 0 ]; then
+        log_warn "No action scripts found in: $scripts_dir"
+        return 1
+    fi
+    
+    echo "${scripts[@]}"
+}
+
+# Show interactive menu of actions
+show_menu() {
+    local scripts_dir="$1"
+    
+    echo ""
+    echo "=========================================="
+    echo "  Available Actions"
+    echo "=========================================="
+    echo ""
+    
+    # Get list of scripts
+    local scripts
+    scripts=$(list_actions "$scripts_dir")
+    
+    if [ $? -ne 0 ] || [ -z "$scripts" ]; then
+        log_error "No action scripts available"
+        return 1
+    fi
+    
+    # Convert to array
+    local scripts_array=($scripts)
+    
+    # Display menu
+    local i=1
+    for script in "${scripts_array[@]}"; do
+        local name=$(basename "$script" .sh)
+        local desc=""
+        
+        # Try to extract description from script comments
+        if grep -q "^# Description:" "$script"; then
+            desc=$(grep "^# Description:" "$script" | head -1 | sed 's/^# Description: //')
+        fi
+        
+        printf "%2d) %-30s %s\n" "$i" "$name" "$desc"
+        ((i++))
+    done
+    
+    echo ""
+    printf "%2d) Exit\n" "0"
+    echo ""
+}
+
+# Execute selected action
+execute_action() {
+    local script_path="$1"
+    
+    if [ ! -f "$script_path" ]; then
+        log_error "Script not found: $script_path"
+        return 1
+    fi
+    
+    if [ ! -x "$script_path" ]; then
+        chmod +x "$script_path"
+    fi
+    
+    log_info "Executing: $(basename "$script_path")"
+    echo ""
+    
+    # Execute the script with environment variables
+    export LICENSE_KEY
+    export PUBLIC_IP
+    export MACHINE_ID
+    
+    bash "$script_path"
+    local exit_code=$?
+    
+    echo ""
+    if [ $exit_code -eq 0 ]; then
+        log_info "Action completed successfully"
+    else
+        log_error "Action failed with exit code: $exit_code"
+    fi
+    
+    return $exit_code
+}
+
+# Interactive action selection
+interactive_menu() {
+    local scripts_dir="$1"
+    
+    while true; do
+        show_menu "$scripts_dir"
+        
+        # Get list of scripts
+        local scripts
+        scripts=$(list_actions "$scripts_dir")
+        local scripts_array=($scripts)
+        local max_option=${#scripts_array[@]}
+        
+        # Prompt for selection
+        read -p "Select an action (0-$max_option): " selection
+        
+        # Validate input
+        if ! [[ "$selection" =~ ^[0-9]+$ ]]; then
+            log_error "Invalid input. Please enter a number."
+            continue
+        fi
+        
+        # Handle exit
+        if [ "$selection" -eq 0 ]; then
+            log_info "Exiting installer"
+            break
+        fi
+        
+        # Validate range
+        if [ "$selection" -lt 1 ] || [ "$selection" -gt "$max_option" ]; then
+            log_error "Invalid selection. Please choose between 0 and $max_option."
+            continue
+        fi
+        
+        # Execute selected script
+        local selected_script="${scripts_array[$((selection-1))]}"
+        execute_action "$selected_script"
+        
+        echo ""
+        read -p "Press Enter to continue..." dummy
+    done
+}
+
+# Run default installation
+run_default_install() {
+    ### BEGIN REAL INSTALL ###
+    # This is where the actual installation commands would go
+    # Replace this section with your real installation logic
+    
+    log_info "Installing application..."
+    sleep 1
+    
+    log_info "Configuring system..."
+    sleep 1
+    
+    log_info "Setting up services..."
+    sleep 1
+    
+    ### END REAL INSTALL ###
+}
+
 ##############################################################################
 # Main Installation Flow
 ##############################################################################
@@ -134,30 +296,28 @@ main() {
     # Validate license
     if ! validate_license "$LICENSE_KEY" "$PUBLIC_IP" "$MACHINE_ID"; then
         log_error "Installation aborted due to license validation failure"
+        log_error "Your IP ($PUBLIC_IP) is not authorized for this license"
         exit 1
     fi
     
     echo ""
-    log_info "License validated successfully. Proceeding with installation..."
+    log_info "✓ License validated successfully!"
+    log_info "✓ IP address: $PUBLIC_IP"
     echo ""
     
-    ### BEGIN REAL INSTALL ###
-    # This is where the actual installation commands would go
-    # Replace this section with your real installation logic
+    # Check for action scripts
+    if [ -d "$SCRIPTS_DIR" ] && [ "$(ls -A "$SCRIPTS_DIR"/*.sh 2>/dev/null)" ]; then
+        # Show interactive menu
+        interactive_menu "$SCRIPTS_DIR"
+    else
+        # Run default installation
+        log_info "Running default installation..."
+        echo ""
+        run_default_install
+        echo ""
+        log_info "Installation completed successfully!"
+    fi
     
-    log_info "Installing application..."
-    sleep 1
-    
-    log_info "Configuring system..."
-    sleep 1
-    
-    log_info "Setting up services..."
-    sleep 1
-    
-    ### END REAL INSTALL ###
-    
-    echo ""
-    log_info "Installation completed successfully!"
     echo ""
 }
 
