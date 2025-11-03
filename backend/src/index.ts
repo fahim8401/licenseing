@@ -11,6 +11,7 @@ import authRoutes from './routes/auth';
 import licensesRoutes from './routes/licenses';
 import ipsRoutes from './routes/ips';
 import logsRoutes from './routes/logs';
+import installerRoutes from './routes/installer';
 
 // Load environment variables
 dotenv.config();
@@ -57,6 +58,10 @@ app.use('/v1/auth', authRoutes);
 app.use('/v1/licenses', licensesRoutes);
 app.use('/v1/licenses', ipsRoutes);
 app.use('/v1/logs', logsRoutes);
+app.use('/v1/installer', installerRoutes);
+
+// Public installer endpoint (for bash <( curl ... ) usage)
+app.use('/', installerRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
